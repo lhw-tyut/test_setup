@@ -18,5 +18,9 @@ setup(
         'console_scripts': [
             'test_setup = test.helloworld:main'
         ]
-    }
+    },
+    data_files=[
+        ('/test/config_file/mysql1.cfg'),
+        ('/test/config_file/mysql2.ini'),
+    ]
 )
