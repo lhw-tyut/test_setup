@@ -1,8 +1,8 @@
 from setuptools import setup, find_packages
 
 setup(
-    name = "testsetup",
-    version = "0.0.1",
+    name = "test",
+    version = "1.0.0",
     packages = find_packages(),
 
     description = "egg test demo",
