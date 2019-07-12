@@ -1,9 +1,13 @@
 # !/usr/bin/env python
 # -*- coding:utf-8 -*-
 import random
+import os
 
 def print_hello_world():
     print("hello world")
+    print('***获取当前目录***')
+    print(os.getcwd())
+    print(os.path.abspath(os.path.dirname(__file__)))
 
 def guess():
     num = random.randint(1,100)
