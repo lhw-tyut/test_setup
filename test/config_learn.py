@@ -8,8 +8,12 @@ def config():
     cp1.read(pkg_resources.resource_filename("test", "config_file/mysql1.cfg"))
     cp2.read(pkg_resources.resource_filename("test", "config_file/mysql2.ini"))
 
-    cp1.get("mysql", "host")
-    cp2.get("mysql", "host")
+    a1 = cp1.get("mysql", "host")
+    print(a1)
+    a2 = cp2.get("mysql", "host")
+    print(a1)
 
-    cp1.get("mysql", "host_one")
-    cp2.get("mysql", "host_one")
+    b1 = cp1.get("mysql", "host_one")
+    print(b1)
+    b2 = cp2.get("mysql", "host_one")
+    print(b2)
