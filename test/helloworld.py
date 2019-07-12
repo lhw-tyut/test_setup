@@ -7,13 +7,14 @@ def print_hello_world():
 
 def guess():
     num = random.randint(1,100)
-    print("")
+    print("猜猜我心里想什么数")
     while True:
-        self_guess = int(input(""))
+        self_guess = int(input("猜猜我是多少"))
 
         if self_guess == num:
-            print("")
+            print("yes")
+            break
         elif self_guess > num:
-            print("")
+            print("big")
         else:
-            print("")
+            print("little")
