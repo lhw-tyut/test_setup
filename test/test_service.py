@@ -1,11 +1,9 @@
 import httplib
 import uuid
 import os
-import signal
 import sys
 import simplejson
 import time
-from baremetal.common import jsonobject
 
 REST_SERVER = '13.13.13.33'
 REST_SERVER_PORT = 7070
@@ -32,7 +30,6 @@ def checkout(task):
 
 class RestException(Exception):
     pass
-
 
 class RestRequest(object):
     def __init__(self, host, port):
@@ -119,14 +116,13 @@ def ipmi_reset(req, ipmi_ip, username, password):
     data = simplejson.dumps(body)
     (status, result) = req.post(path, data, None)
 
-
 def start_serial_console(req, ipmi_ip, username, password):
     path = "/baremetal/serial/shellinabox/start"
     body = {
         "username": username,
         "password": password,
         "ip": ipmi_ip,
-        "port": "10000"
+        "port": "10010"
     }
     data = simplejson.dumps(body)
     (status, result) = req.post(path, data, None)

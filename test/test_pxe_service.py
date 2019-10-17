@@ -2,10 +2,7 @@ import json
 import os
 from flask import Flask, request
 
-
-
 app = Flask(__name__)
-
 
 @app.route('/v1/task/pxe/notify', methods=['POST'])
 def notify():
@@ -28,7 +25,6 @@ def callback():
         f.write(state)
         pass
     return json.dumps({"success": True, "error": ""})
-
 
 def get_pid():
     pid = os.getpid()
