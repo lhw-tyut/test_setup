@@ -22,3 +22,6 @@ def guess():
             print("big")
         else:
             print("little")
+
+a = "switchport access vlan  30,"
+print(a[:-1])
