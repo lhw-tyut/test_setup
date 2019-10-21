@@ -46,7 +46,7 @@ def init_all_config(req, username, password, host, switch):
         ports = ["Ethernet1/2", "Ethernet1/3"]
 
     body = {
-        "is_dhclient": True,
+        "is_dhclient": False,
         "template_name": "12345678-1000",
         "switches": [
             {
