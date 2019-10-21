@@ -22,9 +22,9 @@ def checkout(task):
             callback = read_file("/tmp/callback")
             if "failed" in callback:
                 print("%s failed" % task)
+                p_id = read_file("/tmp/pidfile")
+                os.system("kill %s" % p_id)
                 sys.exit()
-            else:
-                print()
             print("%s finish" % task)
             break
 
@@ -178,53 +178,60 @@ def clone_image(req):
 
 if __name__ == "__main__":
     rest = RestRequest("localhost", "7081")
-    res_s = os.system("python /root/bms_api/tools/notify.py &")
 
-    username = "admin"
-    password = "admin"
-    ip = "10.177.178.86"
-    mode = "uefi"
+    try:
+        res_s = os.system("python /root/bms_api/tools/notify.py &")
 
-    if os.path.exists("/tmp/notify"):
-        os.remove("/tmp/notify")
-    if os.path.exists("/tmp/callback"):
-        os.remove("/tmp/callback")
+        username = "admin"
+        password = "admin"
+        ip = "10.177.178.86"
+        mode = "uefi"
 
-    # service power off
-    ipmi_stop(rest, ip, username, password)
-    checkout("service power off")
-    time.sleep(2)
-
-    # service power on from pxe
-    ipmi_start(rest, ip, username, password, mode)
-    # get dhcpIP from client service
-    checkout("service power on from pxe")
-
-    ip_mac = ''
-    print("starting service for pxe")
-    while True:
         if os.path.exists("/tmp/notify"):
-            print("service boot finish")
-            ip_mac = read_file("/tmp/notify")
-            break
-    mac = ip_mac.split(" ")[0]
-    ipaddress = ip_mac.split(" ")[1]
+            os.remove("/tmp/notify")
+        if os.path.exists("/tmp/callback"):
+            os.remove("/tmp/callback")
 
-    # create connection with pxeagent
-    rest_pxe = RestRequest(ipaddress, "80")
-    clone_image(rest_pxe)
+        # service power off
+        ipmi_stop(rest, ip, username, password)
+        checkout("service power off")
+        time.sleep(2)
 
-    # start clone image, get callback
-    checkout("clone image")
+        # service power on from pxe
+        ipmi_start(rest, ip, username, password, mode)
+        # get dhcpIP from client service
+        checkout("service power on from pxe")
 
-    # start init image
-    init_image(rest_pxe, mac, ipaddress)
-    checkout("init image")
-    time.sleep(1)
+        ip_mac = ''
+        print("starting service for pxe")
+        while True:
+            if os.path.exists("/tmp/notify"):
+                print("service boot finish")
+                ip_mac = read_file("/tmp/notify")
+                break
+        mac = ip_mac.split(" ")[0]
+        ipaddress = ip_mac.split(" ")[1]
+        time.sleep(3)
+        # create connection with pxeagent
+        rest_pxe = RestRequest(ipaddress, "80")
+        clone_image(rest_pxe)
 
-    # reset service
-    ipmi_reset(rest, ip, username, password)
-    checkout("starting service for disk")
+        # start clone image, get callback
+        checkout("clone image")
 
-    p_id = read_file("/tmp/pidfile")
-    os.system("kill %s" % p_id)
+        # start init image
+        init_image(rest_pxe, mac, ipaddress)
+        checkout("init image")
+        time.sleep(1)
+
+        # reset service
+        ipmi_reset(rest, ip, username, password)
+        checkout("starting service for disk")
+
+
+    except:
+        pass
+    finally:
+        p_id = read_file("/tmp/pidfile")
+        os.remove("/tmp/pidfile")
+        os.system("kill %s" % p_id)
