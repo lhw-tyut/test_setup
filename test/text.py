@@ -1,18 +1,28 @@
-import re
-aa = '''*    1     6c92.bf62.ab9f   dynamic  0         F      F    Eth1/7
-*    1     b859.9fac.1331   dynamic  0         F      F    Eth1/10'''
-pattern = re.compile(r'\S+')
+import multiprocessing
+import timeit
+import operator
+def do_something(x):
+    v = pow(x, 2)
+    return v
 
+if __name__ == '__main__':
+    a =[]
+    start = timeit.default_timer()
+    for i in range(1, 10000000):
+        a.append(do_something(i))
 
-for line in aa.split("\n"):
-    data = pattern.findall(line)
-    mac = ":".join(i[0:2] + ":" + i[2:4] for i in data[2].split("."))
-    print(mac)
-    print(data[-1])
+    end = timeit.default_timer()
+    print('single processing time:', str(end-start), 's')
+    print(a[1:10])
 
-aa = "{'mac': '6c:92:bf:62:ab:9f', 'ipaddress': '13.13.13.180'}"
-
-
-ip = ""
-if not ip:
-    print("true")
+	# revise to parallel
+    items = [x for x in range(1, 10000000)]
+    p = multiprocessing.Pool(8)
+    start = timeit.default_timer()
+    b = p.map(do_something, items)
+    p.close()
+    p.join()
+    end = timeit.default_timer()
+    print('multi processing time:', str(end-start),'s')
+    print(b[1:10])
+    print('Return values are all equal ?:', operator.eq(a, b))
