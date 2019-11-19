@@ -1,16 +1,22 @@
 import threading
 import time
-from .do_data import Database_test
-from .test_service import create_bms
+import os
+from do_data import Database_test
+from test_service import create_bms, read_file, get_hardinfo
 
-with Database_test() as data_t:
-    host_ips = data_t.select()
+def get_host_ips():
+
+    with Database_test() as data_t:
+        return data_t.select()
 
 
 if __name__ == '__main__':
+    host_ips = get_host_ips()
+    print(host_ips)
+
     threads = []
     for i in host_ips:
-        thread = threading.Thread(target=create_bms, args=(i,))
+        thread = threading.Thread(target=get_hardinfo, args=(i,))
         threads.append(thread)
 
     print("start", time.ctime())
@@ -23,5 +29,3 @@ if __name__ == '__main__':
         threads[i].join()
 
     print("end", time.ctime())
-
-

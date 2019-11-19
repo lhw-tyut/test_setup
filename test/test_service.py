@@ -5,17 +5,18 @@ import sys
 import simplejson
 import time
 import tenacity
-from .do_data import Database_test
+from do_data import Database_test
 
 REST_SERVER = '13.13.13.33'
 REST_SERVER_PORT = 7070
+
 
 def read_file(f_name):
     with open(f_name, "r") as fp:
         return fp.readline()
 
-def checkout(task, id):
 
+def checkout(task, id):
     @tenacity.retry(wait=tenacity.wait_fixed(2))
     def _checkout():
         with Database_test() as data_t:
@@ -32,9 +33,9 @@ def checkout(task, id):
         raise
 
 
-
 class RestException(Exception):
     pass
+
 
 class RestRequest(object):
     def __init__(self, host, port, create_id):
@@ -42,7 +43,7 @@ class RestRequest(object):
         self.port = port
         self.create_id = create_id
         self.callbackuri = 'http://%s:%s/task/callback' % (REST_SERVER,
-                                                          REST_SERVER_PORT)
+                                                           REST_SERVER_PORT)
         self.headers = self._build_header()
 
     def _build_header(self):
@@ -52,7 +53,7 @@ class RestRequest(object):
                    "callbackuri": self.callbackuri}
         return headers
 
-    def _send_request(self, uri, method, body, token, step):
+    def _send_request(self, uri, method, body, token):
         if not uri:
             raise RestException("uri is required!")
 
@@ -60,31 +61,35 @@ class RestRequest(object):
         try:
             conn = httplib.HTTPConnection(self.host, self.port)
             if token:
-                self.headers["Cookie"] = token
-            self.headers["step"] = step
+                self.headers["step"] = token
             conn.request(method, uri, body, self.headers)
+            print(self.headers)
             response = conn.getresponse()
             status = response.status
             result = response.read()
         except Exception, e:
-            print "Exception: %s" % e
+            print
+            "Exception: %s" % e
             raise e
         finally:
+            print(self.headers)
             if conn:
                 conn.close()
+
         return status, result
 
-    def get(self, uri, body=None, token=None, step=None):
-        return self._send_request(uri, "GET", body, token, step)
+    def get(self, uri, body=None, token=None):
+        return self._send_request(uri, "GET", body, token)
 
-    def post(self, uri, body, token, step):
-        return self._send_request(uri, "POST", body, token, step)
+    def post(self, uri, body, token):
+        return self._send_request(uri, "POST", body, token)
 
-    def put(self, uri, body, token, step=None):
-        return self._send_request(uri, "PUT", body, token, step)
+    def put(self, uri, body, token):
+        return self._send_request(uri, "PUT", body, token)
 
-    def delete(self, uri, body, token, step=None):
-        return self._send_request(uri, "DELETE", body, token, step)
+    def delete(self, uri, body, token):
+        return self._send_request(uri, "DELETE", body, token)
+
 
 def ipmi_stop(req, ipmi_ip, username, password):
     path = '/baremetal/ipmi/stop'
@@ -96,7 +101,8 @@ def ipmi_stop(req, ipmi_ip, username, password):
         }
     ]
     data = simplejson.dumps(body)
-    (status, result) = req.post(path, data, None, "poweroff_s")
+    (status, result) = req.post(path, data, "poweroff_s")
+
 
 def ipmi_start(req, ipmi_ip, username, password, mode):
     path = '/baremetal/ipmi/start'
@@ -109,7 +115,8 @@ def ipmi_start(req, ipmi_ip, username, password, mode):
         }
     ]
     data = simplejson.dumps(body)
-    (status, result) = req.post(path, data, None, "poweron_s")
+    (status, result) = req.post(path, data, "poweron_s")
+
 
 def ipmi_reset(req, ipmi_ip, username, password):
     path = '/baremetal/ipmi/reset'
@@ -121,7 +128,8 @@ def ipmi_reset(req, ipmi_ip, username, password):
         }
     ]
     data = simplejson.dumps(body)
-    (status, result) = req.post(path, data, None, "powerreset_s")
+    (status, result) = req.post(path, data, "powerreset_s")
+
 
 def init_image(req, mac, ip):
     path = '/pxe/baremetal/image/init'
@@ -152,18 +160,27 @@ def init_image(req, mac, ip):
         }
     }
     data = simplejson.dumps(body)
-    (status, result) = req.post(path, data, None, "init_s")
+    (status, result) = req.post(path, data, "init_s")
+
 
 def clone_image(req):
     path = '/pxe/baremetal/image/clone'
     body = {
-        "os_version": "centos7.6_64"
+        "os_version": "ubuntu16_test_64"
     }
     data = simplejson.dumps(body)
-    (status, result) = req.post(path, data, None, "clone_s")
+    (status, result) = req.post(path, data, "clone_s")
+
+
+def get_hardware_info(req):
+    path = "/pxe/baremetal/hardwareinfo"
+    (status, result) = req.get(path, None, "get_hwinfo_s")
+    print
+    "get baremetal hardware info result:\n %s" \
+    % simplejson.dumps(simplejson.loads(result), indent=4)
+
 
 def create_bms(*attr):
-
     create_uuid = str(uuid.uuid4())
     rest = RestRequest("localhost", "7081", create_uuid)
 
@@ -179,15 +196,16 @@ def create_bms(*attr):
     checkout("poweroff_s", create_uuid)
     time.sleep(2)
 
-
     ipmi_start(rest, ip, username, password, mode)
     # get dhcpIP from client service
     checkout("poweron_s", create_uuid)
 
     print("starting service for pxe")
     ipaddress = checkout("dhcp_ip", create_uuid)
+    print(ipaddress)
     time.sleep(1)
     rest_pxe = RestRequest(ipaddress, "80", create_uuid)
+    print("=====")
     clone_image(rest_pxe)
 
     # start clone image, get callback
@@ -198,20 +216,9 @@ def create_bms(*attr):
     ipmi_reset(rest, ip, username, password)
     checkout("powerreset_s", create_uuid)
 
-if __name__ == "__main__":
 
-    try:
-        res_s = os.system("python /root/bms_api/tools/notify.py &")
-
-        if os.path.exists("/tmp/notify"):
-            os.remove("/tmp/notify")
-        if os.path.exists("/tmp/callback"):
-            os.remove("/tmp/callback")
-
-
-    except:
-        pass
-    finally:
-        p_id = read_file("/tmp/pidfile")
-        os.remove("/tmp/pidfile")
-        os.system("kill %s" % p_id)
+def get_hardinfo(*attr):
+    create_uuid = str(uuid.uuid4())
+    rest_pxe = RestRequest("13.13.13.103", "80", create_uuid)
+    print("=====")
+    get_hardware_info(rest_pxe)

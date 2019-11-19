@@ -75,13 +75,3 @@ class Database_test():
         value = self.cursor.fetchone()
         print(value[0])
         return value[0]
-
-
-if __name__ == '__main__':
-    with Database_test() as data_t:
-        #data_t.create_host()
-        data_t.insert_host("10.177.178.187","6c:92:bf:62:ab:9f")
-        #data_t.insert(str(uuid.uuid4()), "10.177.178.187")
-        #data_t.select_create_id("10.177.178.187")
-        #data_t.update('dhcp_ip', "10.177.178.100", "d4511a11-6570-43ab-8e98-8a488086b892")
-        data_t.select()

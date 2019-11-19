@@ -2,7 +2,7 @@ import json
 import os
 import time
 from flask import Flask, request
-from .do_data import Database_test
+from do_data import Database_test
 
 app = Flask(__name__)
 
@@ -27,7 +27,10 @@ def notify():
 @app.route('/task/callback', methods=['POST'])
 def callback():
     taskuuid = request.headers['Taskuuid']
-    step = request.headers["step"]
+    print(request.headers)
+    print(taskuuid)
+    step = request.headers["Step"]
+    print(step)
     data = request.get_json()
     state = "success" if data.get("success", None) else "failed"
 
@@ -48,3 +51,4 @@ def get_pid():
 if __name__ == '__main__':
     get_pid()
     app.run(host='13.13.13.33', port='7070')
+
