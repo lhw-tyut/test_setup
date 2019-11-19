@@ -4,6 +4,8 @@ import os
 import sys
 import simplejson
 import time
+import tenacity
+from .do_data import Database_test
 
 REST_SERVER = '13.13.13.33'
 REST_SERVER_PORT = 7070
@@ -12,29 +14,33 @@ def read_file(f_name):
     with open(f_name, "r") as fp:
         return fp.readline()
 
-def checkout(task):
-    if os.path.exists("/tmp/callback"):
-        os.remove("/tmp/callback")
+def checkout(task, id):
 
-    while True:
-        if os.path.exists("/tmp/callback"):
-            time.sleep(1)
-            callback = read_file("/tmp/callback")
-            if "failed" in callback:
-                print("%s failed" % task)
-                p_id = read_file("/tmp/pidfile")
-                os.system("kill %s" % p_id)
-                sys.exit()
-            print("%s finish" % task)
-            break
+    @tenacity.retry(wait=tenacity.wait_fixed(2))
+    def _checkout():
+        with Database_test() as data_t:
+            res = data_t.select_attr(task, id)
+            if res == "0":
+                raise
+            else:
+                return res
+
+    res = _checkout()
+    if res != "failed":
+        return res
+    else:
+        raise
+
+
 
 class RestException(Exception):
     pass
 
 class RestRequest(object):
-    def __init__(self, host, port):
+    def __init__(self, host, port, create_id):
         self.host = host
         self.port = port
+        self.create_id = create_id
         self.callbackuri = 'http://%s:%s/task/callback' % (REST_SERVER,
                                                           REST_SERVER_PORT)
         self.headers = self._build_header()
@@ -42,11 +48,11 @@ class RestRequest(object):
     def _build_header(self):
         headers = {"Content-Type": "application/json",
                    "Accept": "application/json",
-                   "taskuuid": str(uuid.uuid4()),
+                   "taskuuid": self.create_id,
                    "callbackuri": self.callbackuri}
         return headers
 
-    def _send_request(self, uri, method, body, token):
+    def _send_request(self, uri, method, body, token, step):
         if not uri:
             raise RestException("uri is required!")
 
@@ -55,6 +61,7 @@ class RestRequest(object):
             conn = httplib.HTTPConnection(self.host, self.port)
             if token:
                 self.headers["Cookie"] = token
+            self.headers["step"] = step
             conn.request(method, uri, body, self.headers)
             response = conn.getresponse()
             status = response.status
@@ -67,17 +74,17 @@ class RestRequest(object):
                 conn.close()
         return status, result
 
-    def get(self, uri, body=None, token=None):
-        return self._send_request(uri, "GET", body, token)
+    def get(self, uri, body=None, token=None, step=None):
+        return self._send_request(uri, "GET", body, token, step)
 
-    def post(self, uri, body, token):
-        return self._send_request(uri, "POST", body, token)
+    def post(self, uri, body, token, step):
+        return self._send_request(uri, "POST", body, token, step)
 
-    def put(self, uri, body, token):
-        return self._send_request(uri, "PUT", body, token)
+    def put(self, uri, body, token, step=None):
+        return self._send_request(uri, "PUT", body, token, step)
 
-    def delete(self, uri, body, token):
-        return self._send_request(uri, "DELETE", body, token)
+    def delete(self, uri, body, token, step=None):
+        return self._send_request(uri, "DELETE", body, token, step)
 
 def ipmi_stop(req, ipmi_ip, username, password):
     path = '/baremetal/ipmi/stop'
@@ -89,7 +96,7 @@ def ipmi_stop(req, ipmi_ip, username, password):
         }
     ]
     data = simplejson.dumps(body)
-    (status, result) = req.post(path, data, None)
+    (status, result) = req.post(path, data, None, "poweroff_s")
 
 def ipmi_start(req, ipmi_ip, username, password, mode):
     path = '/baremetal/ipmi/start'
@@ -102,7 +109,7 @@ def ipmi_start(req, ipmi_ip, username, password, mode):
         }
     ]
     data = simplejson.dumps(body)
-    (status, result) = req.post(path, data, None)
+    (status, result) = req.post(path, data, None, "poweron_s")
 
 def ipmi_reset(req, ipmi_ip, username, password):
     path = '/baremetal/ipmi/reset'
@@ -114,28 +121,7 @@ def ipmi_reset(req, ipmi_ip, username, password):
         }
     ]
     data = simplejson.dumps(body)
-    (status, result) = req.post(path, data, None)
-
-def start_serial_console(req, ipmi_ip, username, password):
-    path = "/baremetal/serial/shellinabox/start"
-    body = {
-        "username": username,
-        "password": password,
-        "ip": ipmi_ip,
-        "port": "10010"
-    }
-    data = simplejson.dumps(body)
-    (status, result) = req.post(path, data, None)
-
-def stop_serial_console(req, ipmi_ip, username, password):
-    path = "/baremetal/serial/shellinabox/stop"
-    body = {
-        "username": username,
-        "password": password,
-        "ip": ipmi_ip
-    }
-    data = simplejson.dumps(body)
-    (status, result) = req.post(path, data, None)
+    (status, result) = req.post(path, data, None, "powerreset_s")
 
 def init_image(req, mac, ip):
     path = '/pxe/baremetal/image/init'
@@ -166,7 +152,7 @@ def init_image(req, mac, ip):
         }
     }
     data = simplejson.dumps(body)
-    (status, result) = req.post(path, data, None)
+    (status, result) = req.post(path, data, None, "init_s")
 
 def clone_image(req):
     path = '/pxe/baremetal/image/clone'
@@ -174,59 +160,53 @@ def clone_image(req):
         "os_version": "centos7.6_64"
     }
     data = simplejson.dumps(body)
-    (status, result) = req.post(path, data, None)
+    (status, result) = req.post(path, data, None, "clone_s")
+
+def create_bms(*attr):
+
+    create_uuid = str(uuid.uuid4())
+    rest = RestRequest("localhost", "7081", create_uuid)
+
+    username = "admin"
+    password = "admin"
+    ip = attr[0]
+    mode = "uefi"
+
+    with Database_test() as data_t:
+        data_t.insert(create_uuid, ip)
+
+    ipmi_stop(rest, ip, username, password)
+    checkout("poweroff_s", create_uuid)
+    time.sleep(2)
+
+
+    ipmi_start(rest, ip, username, password, mode)
+    # get dhcpIP from client service
+    checkout("poweron_s", create_uuid)
+
+    print("starting service for pxe")
+    ipaddress = checkout("dhcp_ip", create_uuid)
+    time.sleep(1)
+    rest_pxe = RestRequest(ipaddress, "80", create_uuid)
+    clone_image(rest_pxe)
+
+    # start clone image, get callback
+    checkout("clone_s", create_uuid)
+    time.sleep(1)
+
+    # reset service
+    ipmi_reset(rest, ip, username, password)
+    checkout("powerreset_s", create_uuid)
 
 if __name__ == "__main__":
-    rest = RestRequest("localhost", "7081")
 
     try:
         res_s = os.system("python /root/bms_api/tools/notify.py &")
-
-        username = "admin"
-        password = "admin"
-        ip = "10.177.178.86"
-        mode = "uefi"
 
         if os.path.exists("/tmp/notify"):
             os.remove("/tmp/notify")
         if os.path.exists("/tmp/callback"):
             os.remove("/tmp/callback")
-
-        # service power off
-        ipmi_stop(rest, ip, username, password)
-        checkout("service power off")
-        time.sleep(2)
-
-        # service power on from pxe
-        ipmi_start(rest, ip, username, password, mode)
-        # get dhcpIP from client service
-        checkout("service power on from pxe")
-
-        ip_mac = ''
-        print("starting service for pxe")
-        while True:
-            if os.path.exists("/tmp/notify"):
-                print("service boot finish")
-                ip_mac = read_file("/tmp/notify")
-                break
-        mac = ip_mac.split(" ")[0]
-        ipaddress = ip_mac.split(" ")[1]
-        time.sleep(3)
-        # create connection with pxeagent
-        rest_pxe = RestRequest(ipaddress, "80")
-        clone_image(rest_pxe)
-
-        # start clone image, get callback
-        checkout("clone image")
-
-        # start init image
-        init_image(rest_pxe, mac, ipaddress)
-        checkout("init image")
-        time.sleep(1)
-
-        # reset service
-        ipmi_reset(rest, ip, username, password)
-        checkout("starting service for disk")
 
 
     except:
