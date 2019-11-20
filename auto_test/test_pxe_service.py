@@ -1,6 +1,7 @@
 import json
 import os
 import time
+import uuid
 from flask import Flask, request
 from do_data import Database_test
 
@@ -16,8 +17,11 @@ def notify():
 
     with Database_test() as data_t:
         result = data_t.select_mac(mac)
-        taskuuid = data_t.select_create_id(result)
-        data_t.update("dhcp_ip", ipaddress,taskuuid)
+        if result:
+            taskuuid = data_t.select_create_id(result[0])
+            data_t.update("dhcp_ip", ipaddress,taskuuid)
+        else:
+            data_t.insert_dhcpinfo(ipaddress, mac)
 
     with open("/tmp/notify", "w") as f:
         f.write("%s %s" % (mac, ipaddress))
@@ -27,15 +31,13 @@ def notify():
 @app.route('/task/callback', methods=['POST'])
 def callback():
     taskuuid = request.headers['Taskuuid']
-    print(request.headers)
-    print(taskuuid)
     step = request.headers["Step"]
-    print(step)
     data = request.get_json()
     state = "success" if data.get("success", None) else "failed"
 
-    with Database_test() as data_t:
-        data_t.update(step, state,taskuuid)
+    if len(taskuuid) > 4:
+        with Database_test() as data_t:
+            data_t.update(step, state, taskuuid)
 
     with open("/tmp/callback", "w") as f:
         f.write(state)

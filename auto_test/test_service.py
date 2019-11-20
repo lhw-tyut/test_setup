@@ -16,7 +16,7 @@ def read_file(f_name):
         return fp.readline()
 
 
-def checkout(task, id):
+def checkout(task, id, ip):
     @tenacity.retry(wait=tenacity.wait_fixed(2))
     def _checkout():
         with Database_test() as data_t:
@@ -30,7 +30,7 @@ def checkout(task, id):
     if res != "failed":
         return res
     else:
-        raise
+        print("%s execute task %s failed" % (ip, task))
 
 
 class RestException(Exception):
@@ -173,15 +173,80 @@ def clone_image(req):
 
 
 def get_hardware_info(req):
+    hostinfo = []
     path = "/pxe/baremetal/hardwareinfo"
     (status, result) = req.get(path, None, "get_hwinfo_s")
-    print
-    "get baremetal hardware info result:\n %s" \
-    % simplejson.dumps(simplejson.loads(result), indent=4)
+    hardinfo = simplejson.loads(result)
+
+    host_uuid = str(uuid.uuid4())
+    hostinfo.append(host_uuid)
+
+    ip = hardinfo["bmc_address"]
+    hostinfo.append(ip)
+
+    for i in hardinfo["net_info"]:
+        hostinfo.append(i["mac_address"])
+
+    with Database_test() as data_t:
+        data_t.insert_host(hostinfo)
+    print(hostinfo)
 
 
 def create_bms(*attr):
-    create_uuid = str(uuid.uuid4())
+
+    username = "admin"
+    password = "admin"
+    ip = attr[0]
+    mac = "6c:92:bf:62:ab:9e"
+    mode = "uefi"
+
+    with Database_test() as data_t:
+        create_id = data_t.select_create_id(ip)
+        if create_id:
+            create_uuid = create_id[0]
+        else:
+            create_uuid = str(uuid.uuid4())
+            data_t.insert(create_uuid, ip)
+
+    rest = RestRequest("localhost", "7081", create_uuid)
+    ipmi_stop(rest, ip, username, password)
+    checkout("poweroff_s", create_uuid, ip)
+    time.sleep(2)
+
+    ipmi_start(rest, ip, username, password, mode)
+    # get dhcpIP from client service
+    checkout("poweron_s", create_uuid, ip)
+
+    print("starting service for pxe")
+    ipaddress = checkout("dhcp_ip", create_uuid, ip)
+    print(ipaddress)
+    time.sleep(1)
+    rest_pxe = RestRequest(ipaddress, "80", create_uuid)
+    print("=====")
+    clone_image(rest_pxe)
+
+    # start clone image, get callback
+    checkout("clone_s", create_uuid, ip)
+    time.sleep(1)
+
+    init_image(rest_pxe, mac, ipaddress)
+    checkout("init_s", create_uuid, ip)
+    time.sleep(1)
+
+    # reset service
+    ipmi_reset(rest, ip, username, password)
+    checkout("powerreset_s", create_uuid, ip)
+
+
+def get_hardinfo(*attr):
+
+    ipaddress = attr[0]
+    rest_pxe = RestRequest(ipaddress, "80", "1234")
+    print("=====")
+    get_hardware_info(rest_pxe)
+
+def boot_deploy_image(*attr):
+    create_uuid = "1234"
     rest = RestRequest("localhost", "7081", create_uuid)
 
     username = "admin"
@@ -190,35 +255,12 @@ def create_bms(*attr):
     mode = "uefi"
 
     with Database_test() as data_t:
-        data_t.insert(create_uuid, ip)
+        if not data_t.select_create_id(ip):
+            data_t.insert(create_uuid, ip)
 
     ipmi_stop(rest, ip, username, password)
-    checkout("poweroff_s", create_uuid)
-    time.sleep(2)
+    time.sleep(5)
 
     ipmi_start(rest, ip, username, password, mode)
     # get dhcpIP from client service
-    checkout("poweron_s", create_uuid)
 
-    print("starting service for pxe")
-    ipaddress = checkout("dhcp_ip", create_uuid)
-    print(ipaddress)
-    time.sleep(1)
-    rest_pxe = RestRequest(ipaddress, "80", create_uuid)
-    print("=====")
-    clone_image(rest_pxe)
-
-    # start clone image, get callback
-    checkout("clone_s", create_uuid)
-    time.sleep(1)
-
-    # reset service
-    ipmi_reset(rest, ip, username, password)
-    checkout("powerreset_s", create_uuid)
-
-
-def get_hardinfo(*attr):
-    create_uuid = str(uuid.uuid4())
-    rest_pxe = RestRequest("13.13.13.103", "80", create_uuid)
-    print("=====")
-    get_hardware_info(rest_pxe)
