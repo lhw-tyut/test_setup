@@ -19,7 +19,7 @@ def notify():
         result = data_t.select_mac(mac)
         if result:
             taskuuid = data_t.select_create_id(result[0])
-            data_t.update("dhcp_ip", ipaddress,taskuuid)
+            data_t.update("dhcp_ip", ipaddress,taskuuid[0])
         else:
             data_t.insert_dhcpinfo(ipaddress, mac)
 

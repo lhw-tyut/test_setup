@@ -142,12 +142,7 @@ def init_image(req, mac, ip):
         "enable_monitor": True,
         "networks": {
             "interfaces": [
-                {
-                    "mac": mac,
-                    "ipaddr": ip,
-                    "netmask": "255.255.255.0",
-                    "dns": ["114.114.114.114", "114.114.115.115"]
-                }
+
             ],
             "bonds": [
             ],
@@ -253,10 +248,6 @@ def boot_deploy_image(*attr):
     password = "admin"
     ip = attr[0]
     mode = "uefi"
-
-    with Database_test() as data_t:
-        if not data_t.select_create_id(ip):
-            data_t.insert(create_uuid, ip)
 
     ipmi_stop(rest, ip, username, password)
     time.sleep(5)
