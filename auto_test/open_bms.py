@@ -12,17 +12,32 @@ def get_host_ips():
                 data_t.delete_create_bms(i[1])
         return res
 
-def get_ipmi_ips():
-    with open("ipmi_ips", 'r') as fp:
-        return fp.readlines()
+def get_ipmi_ips(os_version):
+
+    with open('ipmi_ips', 'r') as fp:
+        ips = fp.readlines()
+
+    if "ubuntu" in os_version:
+        with Database_test() as data_t:
+            data_t.create_host_conf()
+            for ip in ips:
+                temp = ip.split('\n')[0]
+                res = temp.split(' ')
+                data_t.insert_host_conf(res)
+
+        with Database_test() as data_t:
+            tem = data_t.select_ipmi_ips()
+            return [i[0] for i in tem]
+    else:
+        return [i.split('\n')[0] for i in ips]
 
 
-def create_bms_task():
+def create_bms_task(ipmi_info, os_version):
     host_ips = get_host_ips()
 
     threads = []
     for i in host_ips:
-        thread = threading.Thread(target=create_bms, args=i)
+        thread = threading.Thread(target=create_bms, args=(i, ipmi_info, os_version))
         threads.append(thread)
 
     print("start", time.ctime())
@@ -40,7 +55,7 @@ def checkout(host_ips):
     @tenacity.retry(wait=tenacity.wait_fixed(10))
     def _count():
         with Database_test() as data_t:
-            res = data_t.select_dhcp_count()
+            res = data_t.select_dhcpip_count()
         if len(host_ips) != res[0]:
             raise
         else:
@@ -52,12 +67,11 @@ def checkout(host_ips):
     return dhcp_ips
 
 
-def get_hardinfo_task():
-    host_ips = get_ipmi_ips()
+def get_hardinfo_task(os_version, ipmi_info):
+    host_ips = get_ipmi_ips(os_version)
     threads = []
     for i in host_ips:
-        ip = i.split("\n")[0]
-        thread = threading.Thread(target=boot_deploy_image, args=(ip,))
+        thread = threading.Thread(target=boot_deploy_image, args=(i, ipmi_info))
         threads.append(thread)
 
     print("start", time.ctime())
@@ -87,6 +101,9 @@ def get_hardinfo_task():
 
 
 if __name__ == '__main__':
-    get_hardinfo_task()
-    create_bms_task()
+    # set ipmi username password
+    ipmi_info = ('admin', 'admin')
+    os_version = "ubuntu16_64"        # vm_esxi_64    ubuntu16_64
 
+    get_hardinfo_task(os_version, ipmi_info)
+    create_bms_task(ipmi_info, os_version)

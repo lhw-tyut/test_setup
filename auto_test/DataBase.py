@@ -60,6 +60,21 @@ class Database_test():
               "values ( '{}', '{}', '{}')".format(str(uuid.uuid4()), dhcp_ip, mac)
         self.cursor.execute(sql)
 
+    # server table
+    def create_host_conf(self):
+        sql = "create table host_conf " \
+              "(ipmi_ip varchar(20), ip1 varchar(20), netmask1 varchar(20), " \
+              "gateway1 varchar(20), vlan_id1 varchar(5), bond_mode1 varchar(2),ip2 varchar(20), netmask2 varchar(20), " \
+              "gateway2 varchar(20), vlan_id2 varchar(5), bond_mode2 varchar(2))"
+        self.cursor.execute(sql)
+
+    def insert_host_conf(self, attr):
+        sql = "insert into host_conf " \
+              "(ipmi_ip, ip1, netmask1, gateway1, vlan_id1, bond_mode1, " \
+              "ip2, netmask2, gateway2, vlan_id2, bond_mode2) " \
+              "values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        self.cursor.execute(sql, tuple(attr))
+
     # update create_bms table
     def update_create_bms(self, attr, value, pk):
         sql = "update create_bms " \
@@ -109,6 +124,20 @@ class Database_test():
         sql = "select create_id from create_bms where ipmi_ip='{}'".format(ip)
         self.cursor.execute(sql)
         value = self.cursor.fetchone()
+        return value
+
+    def select_host_conf(self, ip):
+        sql = "select ip1, netmask1, gateway1, vlan_id1, bond_mode1, " \
+              "ip2, netmask2, gateway2, vlan_id2, bond_mode2 from host_conf " \
+              "where ipmi_ip='{}'".format(ip)
+        self.cursor.execute(sql)
+        value = self.cursor.fetchone()
+        return value
+
+    def select_ipmi_ips(self):
+        sql = "select ipmi_ip from host_conf"
+        self.cursor.execute(sql)
+        value = self.cursor.fetchall()
         return value
 
     def delete_create_bms(self, ip):

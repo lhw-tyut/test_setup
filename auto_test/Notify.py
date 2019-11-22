@@ -59,4 +59,3 @@ if __name__ == '__main__':
     get_pid()
     database_create()
     app.run(host='13.13.13.33', port='7070')
-

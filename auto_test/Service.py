@@ -71,7 +71,6 @@ class RestRequest(object):
             "Exception: %s" % e
             raise e
         finally:
-            print(self.headers)
             if conn:
                 conn.close()
 
@@ -130,7 +129,7 @@ def ipmi_reset(req, ipmi_ip, username, password):
     (status, result) = req.post(path, data, "powerreset_s")
 
 
-def init_image(req, mac, ip):
+def init_image(req, bonds=[], vlans=[]):
     path = '/pxe/baremetal/image/init'
     body = {
         "uuid": str(uuid.uuid4()),
@@ -140,10 +139,8 @@ def init_image(req, mac, ip):
         "networks": {
             "interfaces": [
             ],
-            "bonds": [
-            ],
-            "vlans": [
-            ],
+            "bonds": bonds,
+            "vlans": vlans,
             "dns": [
                 "114.114.114.114",
                 "114.114.115.115"
@@ -154,10 +151,10 @@ def init_image(req, mac, ip):
     (status, result) = req.post(path, data, "init_s")
 
 
-def clone_image(req):
+def clone_image(req, os_version):
     path = '/pxe/baremetal/image/clone'
     body = {
-        "os_version": "ubuntu18_new_64"
+        "os_version": os_version
     }
     data = simplejson.dumps(body)
     (status, result) = req.post(path, data, "clone_s")
@@ -180,44 +177,88 @@ def get_hardware_info(req):
 
     with Database_test() as data_t:
         data_t.insert_host(hostinfo)
-    print(hostinfo)
 
 
 def create_bms(*attr):
     create_uuid = str(uuid.uuid4())
     create_res = []
-    username = "admin"
-    password = "admin"
-    ip = attr[0]
-    mac = ""
+
+    username = attr[1][0]
+    password = attr[1][1]
+
+    ip = attr[0][1]
+
     mode = "uefi"
+    os_version = attr[2]
+
 
     with Database_test() as data_t:
         data_t.insert(create_uuid, ip)
 
-    rest = RestRequest("localhost", "7081", create_uuid)
-    ipmi_stop(rest, ip, username, password)
-    create_res.append(checkout("poweroff_s", create_uuid, ip))
-    time.sleep(2)
+    try:
+        rest = RestRequest("localhost", "7081", create_uuid)
+        ipmi_stop(rest, ip, username, password)
+        create_res.append(checkout("poweroff_s", create_uuid, ip))
+        time.sleep(2)
 
-    ipmi_start(rest, ip, username, password, mode)
-    # get dhcpIP from client service
-    create_res.append(checkout("poweron_s", create_uuid, ip))
+        ipmi_start(rest, ip, username, password, mode)
+        # get dhcpIP from client service
+        create_res.append(checkout("poweron_s", create_uuid, ip))
 
-    print("starting service for pxe")
-    ipaddress = checkout("dhcp_ip", create_uuid, ip)
-    time.sleep(1)
+        print("starting service for pxe")
+        ipaddress = checkout("dhcp_ip", create_uuid, ip)
+        time.sleep(1)
 
-    rest_pxe = RestRequest(ipaddress, "80", create_uuid)
-    clone_image(rest_pxe)
+        rest_pxe = RestRequest(ipaddress, "80", create_uuid)
 
-    # start clone image, get callback
-    create_res.append(checkout("clone_s", create_uuid, ip))
-    time.sleep(1)
+        # start clone image, get callback
+        clone_image(rest_pxe, os_version)
+        create_res.append(checkout("clone_s", create_uuid, ip))
+        time.sleep(1)
 
-    init_image(rest_pxe, mac, ipaddress)
-    create_res.append(checkout("init_s", create_uuid, ip))
-    time.sleep(1)
+        if "ubuntu" in os_version:
+            with Database_test() as data_t:
+                res = data_t.select_host_conf(ip)
+            bonds = [
+                {
+                    "id": "bond0",
+                    "bond_mode": res[4],
+                    "bond_nics": [attr[0][2], attr[0][3]]
+                },
+                {
+                    "id": "bond1",
+                    "bond_mode": res[9],
+                    "bond_nics": [attr[0][4], attr[0][5]]
+                }
+            ]
+
+            vlans = [
+                {
+                    "id": "vlan0",
+                    "vlan_id": res[3],
+                    "vlan_nic": "bond0",
+                    "ipaddr": res[0],
+                    "netmask": res[2],
+                    "gateway": res[1],
+                    "dns": ["114.114.114.114", "114.114.115.115"]
+                },
+                {
+                    "id": "vlan1",
+                    "vlan_id": res[8],
+                    "vlan_nic": "bond1",
+                    "ipaddr": res[5],
+                    "netmask": res[7],
+                    "gateway": res[6],
+                    "dns": ["114.114.114.114", "114.114.115.115"]
+                }
+            ]
+            init_image(rest_pxe, bonds, vlans)
+            create_res.append(checkout("init_s", create_uuid, ip))
+            time.sleep(1)
+    except:
+        with Database_test() as data_t:
+            data_t.update_host("failed", ip)
+        raise
 
     with Database_test() as data_t:
         if "failed" in create_res:
@@ -234,15 +275,14 @@ def get_hardinfo(*attr):
 
     ipaddress = attr[0]
     rest_pxe = RestRequest(ipaddress, "80", "1234")
-    print("=====")
     get_hardware_info(rest_pxe)
 
 def boot_deploy_image(*attr):
     create_uuid = "1234"
     rest = RestRequest("localhost", "7081", create_uuid)
 
-    username = "admin"
-    password = "admin"
+    username = attr[1][0]
+    password = attr[1][1]
     ip = attr[0]
     mode = "uefi"
 
@@ -251,4 +291,3 @@ def boot_deploy_image(*attr):
 
     ipmi_start(rest, ip, username, password, mode)
     # get dhcpIP from client service
-
