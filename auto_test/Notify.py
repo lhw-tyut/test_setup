@@ -1,9 +1,8 @@
 import json
 import os
 import time
-import uuid
 from flask import Flask, request
-from do_data import Database_test
+from DataBase import Database_test
 
 app = Flask(__name__)
 
@@ -19,7 +18,7 @@ def notify():
         result = data_t.select_mac(mac)
         if result:
             taskuuid = data_t.select_create_id(result[0])
-            data_t.update("dhcp_ip", ipaddress,taskuuid[0])
+            data_t.update_create_bms("dhcp_ip", ipaddress,taskuuid[0])
         else:
             data_t.insert_dhcpinfo(ipaddress, mac)
 
@@ -35,13 +34,13 @@ def callback():
     data = request.get_json()
     state = "success" if data.get("success", None) else "failed"
 
-    if len(taskuuid) > 4:
+    if len(taskuuid) > 5:
         with Database_test() as data_t:
-            data_t.update(step, state, taskuuid)
+            data_t.update_create_bms(step, state, taskuuid)
 
     with open("/tmp/callback", "w") as f:
         f.write(state)
-        pass
+
     return json.dumps({"success": True, "error": ""})
 
 def get_pid():
@@ -50,7 +49,14 @@ def get_pid():
         fp.write(str(pid))
         time.sleep(1)
 
+def database_create():
+    with Database_test() as data_t:
+        data_t.create()
+        data_t.create_host()
+        data_t.create_dhcpinfo()
+
 if __name__ == '__main__':
     get_pid()
+    database_create()
     app.run(host='13.13.13.33', port='7070')
 
