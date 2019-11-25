@@ -5,6 +5,15 @@ import time
 import tenacity
 from configparser import ConfigParser
 from DataBase import Database_test
+import logging
+
+logging.basicConfig(level=logging.DEBUG,
+         format='%(asctime)s %(levelname)s %(process)d %(name)s.%(lineno)d %(message)s',
+         datefmt='[%Y-%m_%d %H:%M:%S]',
+         filename='my.log',
+         filemode='a')
+logger = logging.getLogger(__name__)
+
 
 cp = ConfigParser()
 cp.read("bms.ini")
@@ -29,8 +38,10 @@ def checkout(task, id, ip):
 
     res = _checkout()
     if res != "failed":
+        logger.debug("%s execute task %s success" % (ip, task))
         print("%s execute task %s success" % (ip, task))
     else:
+        logger.debug("%s execute task %s failed" % (ip, task))
         print("%s execute task %s failed" % (ip, task))
 
     return res
@@ -180,7 +191,7 @@ def get_hardware_info(req):
 
     with Database_test() as data_t:
         data_t.insert_host(hostinfo)
-
+    logger.debug("get hardware information %s" % hostinfo)
 
 def create_bms(*attr):
     create_uuid = str(uuid.uuid4())
@@ -209,6 +220,7 @@ def create_bms(*attr):
         create_res.append(checkout("poweron_s", create_uuid, ip))
 
         print("starting service for pxe")
+        logger.debug("%s starting service for pxe" % ip)
         ipaddress = checkout("dhcp_ip", create_uuid, ip)
         time.sleep(1)
 
@@ -291,10 +303,13 @@ def boot_deploy_image(*attr):
     mode = "uefi"
 
     ipmi_stop(rest, ip, username, password)
+    logger.debug("%s execute task %s success" % (ip, "power off"))
     print("%s execute task %s success" % (ip, "power off"))
     time.sleep(5)
 
     ipmi_start(rest, ip, username, password, mode)
+    logger.debug("%s execute task %s success" % (ip, "power on"))
     print("%s execute task %s success" % (ip, "power on"))
+    logger.debug("%s wait pxe boot" % ip)
     print("%s wait pxe boot" % ip)
     # get dhcpIP from client service

@@ -2,6 +2,8 @@ import os
 import logging
 import logging.config
 
+path=os.getcwd()
+filename = os.path.join(os.getcwd(), 'test.log')
 
 LOG_SETTINGS = {
     'version': 1,
@@ -16,7 +18,7 @@ LOG_SETTINGS = {
             'class': 'logging.handlers.RotatingFileHandler',
             'level': 'DEBUG',
             'formatter': 'detailed',
-            'filename': '/root/lhw/test_auto/test.log',
+            'filename': filename,
             'mode': 'a',
             'maxBytes': 10485760,
             'backupCount': 5,
@@ -34,7 +36,7 @@ LOG_SETTINGS = {
         },
     },
     'loggers': {
-        'baremetal': {
+        'test': {
             'level': 'DEBUG',
             'handlers': ['file', 'console']
             },
@@ -42,9 +44,9 @@ LOG_SETTINGS = {
 }
 
 
-def setup(path='/root/lhw/test_auto'):
+def set_up(path=os.getcwd()):
     if not os.path.exists(path):
         os.makedirs(path)
     logging.config.dictConfig(LOG_SETTINGS)
-    logger = logging.getLogger('baremetal')
+    logger = logging.getLogger('test')
     return logger

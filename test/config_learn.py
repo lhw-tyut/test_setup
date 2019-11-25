@@ -1,14 +1,25 @@
 from configparser import ConfigParser
 import pkg_resources
+import logging
+from helloworld import print_hello_world
 
-
+logging.basicConfig(level=logging.INFO,
+         format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
+         datefmt='[%Y-%m_%d %H:%M:%S]',
+         filename='my.log',
+         filemode='a')
+logger = logging.getLogger(__name__)
+print(logger)
 def config():
+
     cp1 = ConfigParser()
     cp2 = ConfigParser()
     cp1.read(pkg_resources.resource_filename("test", "config_file/mysql1.cfg"))
     cp2.read(pkg_resources.resource_filename("test", "config_file/mysql2.ini"))
 
     a1 = cp1.get("mysql", "host")
+
+    logger.info("starting to get hardware information")
     print(a1)
     a2 = cp2.get("mysql", "host")
     print(a2)
@@ -17,6 +28,8 @@ def config():
     print(b1)
     b2 = cp2.get("mysql", "host_one")
     print(b2)
+
+    print_hello_world()
 
 # from netmiko import ConnectHandler
 #
@@ -46,5 +59,5 @@ def config():
 # conn2 = ConnectHandler(**huawei_config)
 # output3 = conn2.send_command("display interface 10GE1/0/3")
 # print(output3)
-
-config()
+if __name__ == '__main__':
+    config()
