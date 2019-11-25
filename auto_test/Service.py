@@ -10,7 +10,7 @@ import logging
 logging.basicConfig(level=logging.DEBUG,
          format='%(asctime)s %(levelname)s %(process)d %(name)s.%(lineno)d %(message)s',
          datefmt='[%Y-%m_%d %H:%M:%S]',
-         filename='my.log',
+         filename='create_bms.log',
          filemode='a')
 logger = logging.getLogger(__name__)
 
