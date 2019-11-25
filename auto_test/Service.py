@@ -3,11 +3,14 @@ import uuid
 import simplejson
 import time
 import tenacity
+from configparser import ConfigParser
 from DataBase import Database_test
 
-REST_SERVER = '13.13.13.33'
-REST_SERVER_PORT = 7070
+cp = ConfigParser()
+cp.read("bms.ini")
 
+REST_SERVER = cp.get("rest", "rest_service")
+REST_SERVER_PORT = cp.get("rest", "rest_service_port")
 
 def read_file(f_name):
     with open(f_name, "r") as fp:
@@ -15,7 +18,7 @@ def read_file(f_name):
 
 
 def checkout(task, id, ip):
-    @tenacity.retry(wait=tenacity.wait_fixed(2))
+    @tenacity.retry(wait=tenacity.wait_fixed(2), stop=tenacity.stop_after_delay(240))
     def _checkout():
         with Database_test() as data_t:
             res = data_t.select_attr(task, id)
@@ -133,9 +136,9 @@ def init_image(req, bonds=[], vlans=[]):
     path = '/pxe/baremetal/image/init'
     body = {
         "uuid": str(uuid.uuid4()),
-        "username": "root",
-        "password": "cds-china",
-        "os_type": "centos7",
+        "username": cp.get("image", "username"),
+        "password": cp.get("image", "password"),
+        "os_type": 'linux',
         "networks": {
             "interfaces": [
             ],
@@ -276,6 +279,7 @@ def get_hardinfo(*attr):
     ipaddress = attr[0]
     rest_pxe = RestRequest(ipaddress, "80", "1234")
     get_hardware_info(rest_pxe)
+    print("%s get hardware info success" % ipaddress)
 
 def boot_deploy_image(*attr):
     create_uuid = "1234"
@@ -287,7 +291,10 @@ def boot_deploy_image(*attr):
     mode = "uefi"
 
     ipmi_stop(rest, ip, username, password)
+    print("%s execute task %s success" % (ip, "power off"))
     time.sleep(5)
 
     ipmi_start(rest, ip, username, password, mode)
+    print("%s execute task %s success" % (ip, "power on"))
+    print("%s wait pxe boot" % ip)
     # get dhcpIP from client service

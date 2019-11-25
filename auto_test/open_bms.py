@@ -4,6 +4,11 @@ import tenacity
 from DataBase import Database_test
 from Service import create_bms, read_file, get_hardinfo, boot_deploy_image
 
+from configparser import ConfigParser
+
+cp = ConfigParser()
+cp.read("bms.ini")
+
 def get_host_ips():
     with Database_test() as data_t:
         res = data_t.select()
@@ -52,7 +57,7 @@ def create_bms_task(ipmi_info, os_version):
     print("end", time.ctime())
 
 def checkout(host_ips):
-    @tenacity.retry(wait=tenacity.wait_fixed(10))
+    @tenacity.retry(wait=tenacity.wait_fixed(10), stop=tenacity.stop_after_delay(240))
     def _count():
         with Database_test() as data_t:
             res = data_t.select_dhcpip_count()
@@ -102,8 +107,8 @@ def get_hardinfo_task(os_version, ipmi_info):
 
 if __name__ == '__main__':
     # set ipmi username password
-    ipmi_info = ('admin', 'admin')
-    os_version = "ubuntu16_64"        # vm_esxi_64    ubuntu16_64
+    ipmi_info = (cp.get('ipmi', 'username'), cp.get('ipmi', 'password'))
+    os_version = cp.get('image', 'os_version')        # vm_esxi_64    ubuntu16_64
 
     get_hardinfo_task(os_version, ipmi_info)
     create_bms_task(ipmi_info, os_version)

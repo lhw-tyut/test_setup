@@ -3,6 +3,10 @@ import os
 import time
 from flask import Flask, request
 from DataBase import Database_test
+from configparser import ConfigParser
+
+cp = ConfigParser()
+cp.read("bms.ini")
 
 app = Flask(__name__)
 
@@ -58,4 +62,4 @@ def database_create():
 if __name__ == '__main__':
     get_pid()
     database_create()
-    app.run(host='13.13.13.33', port='7070')
+    app.run(host=cp.get("rest", "rest_service"), port=cp.get("rest", "rest_service_port"))
