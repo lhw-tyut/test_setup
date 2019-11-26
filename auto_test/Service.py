@@ -26,8 +26,8 @@ def read_file(f_name):
         return fp.readline()
 
 
-def checkout(task, id, ip):
-    @tenacity.retry(wait=tenacity.wait_fixed(2), stop=tenacity.stop_after_delay(240))
+def checkout(task, id, ip, time=300):
+    @tenacity.retry(wait=tenacity.wait_fixed(2), stop=tenacity.stop_after_delay(time))
     def _checkout():
         with Database_test() as data_t:
             res = data_t.select_attr(task, id)
@@ -143,7 +143,7 @@ def ipmi_reset(req, ipmi_ip, username, password):
     (status, result) = req.post(path, data, "powerreset_s")
 
 
-def init_image(req, bonds=[], vlans=[]):
+def init_image(req, interfaces=[], bonds=[]):
     path = '/pxe/baremetal/image/init'
     body = {
         "uuid": str(uuid.uuid4()),
@@ -151,13 +151,13 @@ def init_image(req, bonds=[], vlans=[]):
         "password": cp.get("image", "password"),
         "os_type": 'linux',
         "networks": {
-            "interfaces": [
-            ],
+            "interfaces": interfaces,
             "bonds": bonds,
-            "vlans": vlans,
+            "vlans": [],
             "dns": [
-                "114.114.114.114",
-                "114.114.115.115"
+                cp.get("image", "DNS1"),
+                cp.get("image", "DNS2"),
+                cp.get("image", "DNS3")
             ]
         }
     }
@@ -228,7 +228,7 @@ def create_bms(*attr):
 
         # start clone image, get callback
         clone_image(rest_pxe, os_version)
-        create_res.append(checkout("clone_s", create_uuid, ip))
+        create_res.append(checkout("clone_s", create_uuid, ip,time=1500))
         time.sleep(1)
 
         if "ubuntu" in os_version:
@@ -237,37 +237,26 @@ def create_bms(*attr):
             bonds = [
                 {
                     "id": "bond0",
-                    "bond_mode": res[4],
-                    "bond_nics": [attr[0][2], attr[0][3]]
-                },
-                {
-                    "id": "bond1",
-                    "bond_mode": res[9],
-                    "bond_nics": [attr[0][4], attr[0][5]]
-                }
-            ]
-
-            vlans = [
-                {
-                    "id": "vlan0",
-                    "vlan_id": res[3],
-                    "vlan_nic": "bond0",
+                    "bond_mode": res[3],
+                    "bond_nics": [attr[0][4], attr[0][5]],
                     "ipaddr": res[0],
-                    "netmask": res[2],
-                    "gateway": res[1],
-                    "dns": ["114.114.114.114", "114.114.115.115"]
-                },
-                {
-                    "id": "vlan1",
-                    "vlan_id": res[8],
-                    "vlan_nic": "bond1",
-                    "ipaddr": res[5],
-                    "netmask": res[7],
-                    "gateway": res[6],
-                    "dns": ["114.114.114.114", "114.114.115.115"]
+                    "netmask": res[1],
+                    "gateway": res[2]
                 }
             ]
-            init_image(rest_pxe, bonds, vlans)
+            interfaces = [
+                {
+                    "mac": attr[0][2],
+                    "ipaddr": res[4],
+                    "netmask": res[5]
+                },
+                {
+                    "mac": attr[0][3],
+                    "ipaddr": res[7],
+                    "netmask": res[8],
+                }
+            ]
+            init_image(rest_pxe, interfaces, bonds)
             create_res.append(checkout("init_s", create_uuid, ip))
             time.sleep(1)
     except:

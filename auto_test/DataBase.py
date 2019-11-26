@@ -64,14 +64,14 @@ class Database_test():
     def create_host_conf(self):
         sql = "create table host_conf " \
               "(ipmi_ip varchar(20), ip1 varchar(20), netmask1 varchar(20), " \
-              "gateway1 varchar(20), vlan_id1 varchar(5), bond_mode1 varchar(2),ip2 varchar(20), netmask2 varchar(20), " \
-              "gateway2 varchar(20), vlan_id2 varchar(5), bond_mode2 varchar(2))"
+              "gateway1 varchar(20), bond_mode varchar(2),ip2 varchar(20), netmask2 varchar(20), " \
+              "gateway2 varchar(20), ip3 varchar(20), netmask3 varchar(20), gateway3 varchar(20))"
         self.cursor.execute(sql)
 
     def insert_host_conf(self, attr):
         sql = "insert into host_conf " \
-              "(ipmi_ip, ip1, netmask1, gateway1, vlan_id1, bond_mode1, " \
-              "ip2, netmask2, gateway2, vlan_id2, bond_mode2) " \
+              "(ipmi_ip, ip1, netmask1, gateway1, bond_mode, " \
+              "ip2, netmask2, gateway2, ip3, netmask3, gateway3) " \
               "values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         self.cursor.execute(sql, tuple(attr))
 
@@ -127,8 +127,8 @@ class Database_test():
         return value
 
     def select_host_conf(self, ip):
-        sql = "select ip1, netmask1, gateway1, vlan_id1, bond_mode1, " \
-              "ip2, netmask2, gateway2, vlan_id2, bond_mode2 from host_conf " \
+        sql = "select ip1, netmask1, gateway1, bond_mode, " \
+              "ip2, netmask2, gateway2, ip3, netmask3, gateway3 from host_conf " \
               "where ipmi_ip='{}'".format(ip)
         self.cursor.execute(sql)
         value = self.cursor.fetchone()
