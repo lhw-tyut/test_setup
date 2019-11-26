@@ -237,23 +237,29 @@ def create_bms(*attr):
             bonds = [
                 {
                     "id": "bond0",
-                    "bond_mode": res[3],
+                    "bond_mode": int(res[3]),
                     "bond_nics": [attr[0][4], attr[0][5]],
                     "ipaddr": res[0],
                     "netmask": res[1],
-                    "gateway": res[2]
+                    "gateway": res[2],
+                    "bond_miimon": int(cp.get("image", "bond_miimon")),
+                    "bond_updelay": int(cp.get("image", "bond_updelay")),
+                    "bond_downdelay": int(cp.get("image", "bond_downdelay"))
+
                 }
             ]
             interfaces = [
                 {
                     "mac": attr[0][2],
                     "ipaddr": res[4],
-                    "netmask": res[5]
+                    "netmask": res[5],
+                    'mtu': int(cp.get("image", "mtu"))
                 },
                 {
                     "mac": attr[0][3],
                     "ipaddr": res[7],
                     "netmask": res[8],
+                    'mtu': int(cp.get("image", "mtu"))
                 }
             ]
             init_image(rest_pxe, interfaces, bonds)
