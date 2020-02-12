@@ -1,4 +1,3 @@
-import threading
 from concurrent.futures import ThreadPoolExecutor
 import time
 import tenacity
@@ -15,7 +14,7 @@ def get_host_ips():
         res = data_t.select()
         for i in res:
             if i[-1] == "failed":
-                data_t.delete_create_bms(i[1])
+                data_t.delete_create_bms(i[0])
         return res
 
 def get_ipmi_ips(os_version):
