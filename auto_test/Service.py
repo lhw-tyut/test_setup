@@ -192,7 +192,10 @@ def get_hardware_info(req):
     hostinfo.extend(macs)
     print(hostinfo)
     with Database_test() as data_t:
-        data_t.insert_host(hostinfo)
+        try:
+            data_t.insert_host(hostinfo)
+        except:
+            pass
 
     logger.debug("get hardware information %s" % hostinfo)
 

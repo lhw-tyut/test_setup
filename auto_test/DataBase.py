@@ -8,7 +8,7 @@ cp.read("bms.ini")
 class Database_test():
     def __init__(self):
         self.nic_count = int(cp.get('nic', 'count'))
-        self.conn = sqlite3.connect("test.db", timeout=5)
+        self.conn = sqlite3.connect("test.db", timeout=10)
         self.cursor = self.conn.cursor()
 
     def __enter__(self):
@@ -33,13 +33,13 @@ class Database_test():
               "values ( '{}', '{}', 0, 0, 0, 0, 0, 0)".format(uuid, ipmi_ip)
         self.cursor.execute(sql)
 
-    # server table
+    # server hardinfo table
     def create_host(self):
         macs = ''
         for i in range(self.nic_count):
             mac = "mac%s varchar(20), " % (i + 1)
             macs += mac
-        sql = "create table host (ipmi_ip varchar(30), " \
+        sql = "create table host (ipmi_ip varchar(30) primary key, " \
               + macs + "result varchar(10))"
 
         self.cursor.execute(sql)
@@ -78,7 +78,7 @@ class Database_test():
             ip = "ip%s varchar(20), " % (i + 1)
             ips += ip
         sql = "create table host_conf " \
-              "(ipmi_ip varchar(20), " + ips + "hostname varchar(30))"
+              "(ipmi_ip varchar(20) primary key, " + ips + "hostname varchar(30))"
         self.cursor.execute(sql)
 
     def insert_host_conf(self, attr):
@@ -111,6 +111,12 @@ class Database_test():
         value = self.cursor.fetchall()
         return value
 
+    def select_host_ip(self):
+        sql = "select ipmi_ip from host"
+        self.cursor.execute(sql)
+        value = self.cursor.fetchall()
+        return value
+
     def select_dhcpip_count(self):
         sql = "select count(*) from dhcpinfo"
         self.cursor.execute(sql)
@@ -130,7 +136,7 @@ class Database_test():
         return value[0]
 
     def select_mac(self, mac):
-        sql = "select ipmi_ip, mac2 from host where mac2='{}'".format(mac)
+        sql = "select ipmi_ip, mac1 from host where mac1='{}'".format(mac)
         self.cursor.execute(sql)
         value = self.cursor.fetchone()
         return value
@@ -163,4 +169,8 @@ class Database_test():
     def delete_create_bms(self, ip):
         sql = "delete from create_bms " \
               "where ipmi_ip='{}'".format(ip)
+        self.cursor.execute(sql)
+
+    def delete_dhcpinfo(self):
+        sql = "delete from dhcpinfo"
         self.cursor.execute(sql)

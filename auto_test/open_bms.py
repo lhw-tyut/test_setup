@@ -25,18 +25,20 @@ def get_ipmi_ips(os_version):
 
     if "centos" in os_version:
         with Database_test() as data_t:
-            print(len(ips))
-            print(data_t.select_host_conf_count())
-
+            data_t.delete_dhcpinfo()
             if len(ips) != data_t.select_host_conf_count()[0]:
                 for ip in ips:
                     temp = ip.split('\n')[0]
-                    res = temp.split(' ')
-                    data_t.insert_host_conf(res)
+                    res = temp.split()
+                    try:
+                        data_t.insert_host_conf(res)
+                    except:
+                        continue
 
         with Database_test() as data_t:
-            tem = data_t.select_ipmi_ips()
-            return [i[0] for i in tem]
+            tem1 = data_t.select_ipmi_ips()
+            tem2 = data_t.select_host_ip()
+            return [i for i in tem1 if i not in tem2]
     else:
         return [i.split('\n')[0] for i in ips]
 
@@ -48,13 +50,13 @@ def create_bms_task():
 
     with ThreadPoolExecutor(max_workers=3) as executor:
         for i in host_ips:
-            time.sleep(0.01)
+            time.sleep(0.1)
             executor.submit(create_bms, i)
 
     print("end", time.ctime())
 
 def checkout(host_ips):
-    @tenacity.retry(wait=tenacity.wait_fixed(10), stop=tenacity.stop_after_delay(240))
+    @tenacity.retry(wait=tenacity.wait_fixed(10), stop=tenacity.stop_after_delay(600))
     def _count():
         with Database_test() as data_t:
             res = data_t.select_dhcpip_count()
@@ -64,8 +66,12 @@ def checkout(host_ips):
             with Database_test() as data_t:
                 res = data_t.select_dhcp_ip()
             return res
-
-    dhcp_ips = _count()
+    try:
+        dhcp_ips = _count()
+    except:
+        with Database_test() as data_t:
+            res = data_t.select_dhcp_ip()
+        dhcp_ips = res
     return dhcp_ips
 
 
@@ -75,20 +81,20 @@ def get_hardinfo_task(os_version):
     print("start", time.ctime())
     with ThreadPoolExecutor(max_workers=3) as executor:
         for i in host_ips:
-            time.sleep(0.01)
+            time.sleep(1)
             executor.submit(boot_deploy_image, i)
 
     dhcp_ips = checkout(host_ips)
 
     with ThreadPoolExecutor(max_workers=3) as executor:
         for i in dhcp_ips:
-            time.sleep(0.01)
+            time.sleep(0.1)
             executor.submit(get_hardinfo, i[0])
 
 
 
     print("end", time.ctime())
-    time.sleep(10)
+    time.sleep(5)
 
 if __name__ == '__main__':
     # set ipmi username password
