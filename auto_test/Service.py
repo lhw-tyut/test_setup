@@ -190,7 +190,6 @@ def get_hardware_info(req):
         macs.append(i["mac_address"])
     macs.sort()
     hostinfo.extend(macs)
-    print(hostinfo)
     with Database_test() as data_t:
         try:
             data_t.insert_host(hostinfo)
@@ -225,7 +224,7 @@ def create_bms(host):
         # get dhcpIP from client service
         create_res.append(checkout("poweron_s", create_uuid, ip))
 
-        print("starting service for pxe")
+        print("%s starting service for pxe" % ip)
         logger.debug("%s starting service for pxe" % ip)
         ipaddress = checkout("dhcp_ip", create_uuid, ip)
         time.sleep(1)
@@ -233,6 +232,8 @@ def create_bms(host):
         rest_pxe = RestRequest(ipaddress, "80", create_uuid)
 
         # start clone image, get callback
+        print("%s starting clone image" % ip)
+        logger.debug("%s starting clone image" % ip)
         clone_image(rest_pxe, os_version)
         create_res.append(checkout("clone_s", create_uuid, ip, time=1500))
         time.sleep(1)
@@ -272,9 +273,7 @@ def create_bms(host):
 
 
 def get_hardinfo(*attr):
-    print(attr)
     ipaddress = attr[0]
-    print(ipaddress)
     rest_pxe = RestRequest(ipaddress, "80", "1234")
     get_hardware_info(rest_pxe)
     print("%s get hardware info success" % ipaddress)
