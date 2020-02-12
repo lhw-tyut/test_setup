@@ -38,7 +38,7 @@ def get_ipmi_ips(os_version):
         with Database_test() as data_t:
             tem1 = data_t.select_ipmi_ips()
             tem2 = data_t.select_host_ip()
-            return [i for i in tem1 if i not in tem2]
+            return [i[0] for i in tem1 if i not in tem2]
     else:
         return [i.split('\n')[0] for i in ips]
 
