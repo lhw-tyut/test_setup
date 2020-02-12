@@ -8,18 +8,22 @@ from DataBase import Database_test
 import logging
 
 logging.basicConfig(level=logging.DEBUG,
-         format='%(asctime)s %(levelname)s %(process)d %(name)s.%(lineno)d %(message)s',
-         datefmt='[%Y-%m_%d %H:%M:%S]',
-         filename='create_bms.log',
-         filemode='a')
+                    format='%(asctime)s %(levelname)s %(process)d %(name)s.%(lineno)d %(message)s',
+                    datefmt='[%Y-%m_%d %H:%M:%S]',
+                    filename='create_bms.log',
+                    filemode='a')
 logger = logging.getLogger(__name__)
-
 
 cp = ConfigParser()
 cp.read("bms.ini")
 
 REST_SERVER = cp.get("rest", "rest_service")
 REST_SERVER_PORT = cp.get("rest", "rest_service_port")
+USERNAME = cp.get('ipmi', 'username')
+PASSWORD = cp.get('ipmi', 'password')
+OS_VERSION = cp.get('image', 'os_version')
+NETMASK = cp.get('image', 'netmask')
+
 
 def read_file(f_name):
     with open(f_name, "r") as fp:
@@ -143,21 +147,20 @@ def ipmi_reset(req, ipmi_ip, username, password):
     (status, result) = req.post(path, data, "powerreset_s")
 
 
-def init_image(req, interfaces=[], bonds=[]):
+def init_image(req, hostname, interfaces=[], bonds=[]):
     path = '/pxe/baremetal/image/init'
     body = {
         "uuid": str(uuid.uuid4()),
-        "username": cp.get("image", "username"),
-        "password": cp.get("image", "password"),
-        "os_type": 'linux',
+        "hostname": hostname,
+        "username": "root",
+        "password": "cds-china",
+        "os_type": 'centos7',
         "networks": {
             "interfaces": interfaces,
             "bonds": bonds,
             "vlans": [],
             "dns": [
-                cp.get("image", "DNS1"),
-                cp.get("image", "DNS2"),
-                cp.get("image", "DNS3")
+                "114.114.114.114"
             ]
         }
     }
@@ -180,31 +183,31 @@ def get_hardware_info(req):
     (status, result) = req.get(path, None, "get_hwinfo_s")
     hardinfo = simplejson.loads(result)
 
-    host_uuid = str(uuid.uuid4())
-    hostinfo.append(host_uuid)
-
     ip = hardinfo["bmc_address"]
     hostinfo.append(ip)
-
+    macs = []
     for i in hardinfo["net_info"]:
-        hostinfo.append(i["mac_address"])
-
+        macs.append(i["mac_address"])
+    macs.sort()
+    hostinfo.extend(macs)
+    print(hostinfo)
     with Database_test() as data_t:
         data_t.insert_host(hostinfo)
+
     logger.debug("get hardware information %s" % hostinfo)
 
-def create_bms(*attr):
+
+def create_bms(host):
     create_uuid = str(uuid.uuid4())
     create_res = []
 
-    username = attr[1][0]
-    password = attr[1][1]
+    username = USERNAME
+    password = PASSWORD
 
-    ip = attr[0][1]
+    ip = host[0]
 
     mode = "uefi"
-    os_version = attr[2]
-
+    os_version = OS_VERSION
 
     with Database_test() as data_t:
         data_t.insert(create_uuid, ip)
@@ -228,41 +231,25 @@ def create_bms(*attr):
 
         # start clone image, get callback
         clone_image(rest_pxe, os_version)
-        create_res.append(checkout("clone_s", create_uuid, ip,time=1500))
+        create_res.append(checkout("clone_s", create_uuid, ip, time=1500))
         time.sleep(1)
 
-        if "ubuntu" in os_version:
+        if "centos" in os_version:
             with Database_test() as data_t:
                 res = data_t.select_host_conf(ip)
-            bonds = [
-                {
-                    "id": "bond0",
-                    "bond_mode": int(res[3]),
-                    "bond_nics": [attr[0][4], attr[0][5]],
-                    "ipaddr": res[0],
-                    "netmask": res[1],
-                    "gateway": res[2],
-                    "bond_miimon": int(cp.get("image", "bond_miimon")),
-                    "bond_updelay": int(cp.get("image", "bond_updelay")),
-                    "bond_downdelay": int(cp.get("image", "bond_downdelay"))
 
+            hostname = res[-1]
+            interfaces = []
+            for i in range(len(host) - 2):
+                count = int(i + 1)
+                a = {
+                    "mac": host[count],
+                    "ipaddr": res[count],
+                    "netmask": NETMASK
                 }
-            ]
-            interfaces = [
-                {
-                    "mac": attr[0][2],
-                    "ipaddr": res[4],
-                    "netmask": res[5],
-                    'mtu': int(cp.get("image", "mtu"))
-                },
-                {
-                    "mac": attr[0][3],
-                    "ipaddr": res[7],
-                    "netmask": res[8],
-                    'mtu': int(cp.get("image", "mtu"))
-                }
-            ]
-            init_image(rest_pxe, interfaces, bonds)
+                interfaces.append(a)
+
+            init_image(rest_pxe, hostname, interfaces)
             create_res.append(checkout("init_s", create_uuid, ip))
             time.sleep(1)
     except:
@@ -282,18 +269,20 @@ def create_bms(*attr):
 
 
 def get_hardinfo(*attr):
-
+    print(attr)
     ipaddress = attr[0]
+    print(ipaddress)
     rest_pxe = RestRequest(ipaddress, "80", "1234")
     get_hardware_info(rest_pxe)
     print("%s get hardware info success" % ipaddress)
+
 
 def boot_deploy_image(*attr):
     create_uuid = "1234"
     rest = RestRequest("localhost", "7081", create_uuid)
 
-    username = attr[1][0]
-    password = attr[1][1]
+    username = USERNAME
+    password = PASSWORD
     ip = attr[0]
     mode = "uefi"
 

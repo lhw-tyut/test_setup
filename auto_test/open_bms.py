@@ -1,4 +1,5 @@
 import threading
+from concurrent.futures import ThreadPoolExecutor
 import time
 import tenacity
 from DataBase import Database_test
@@ -22,13 +23,16 @@ def get_ipmi_ips(os_version):
     with open('ipmi_ips', 'r') as fp:
         ips = fp.readlines()
 
-    if "ubuntu" in os_version:
+    if "centos" in os_version:
         with Database_test() as data_t:
-            data_t.create_host_conf()
-            for ip in ips:
-                temp = ip.split('\n')[0]
-                res = temp.split(' ')
-                data_t.insert_host_conf(res)
+            print(len(ips))
+            print(data_t.select_host_conf_count())
+
+            if len(ips) != data_t.select_host_conf_count()[0]:
+                for ip in ips:
+                    temp = ip.split('\n')[0]
+                    res = temp.split(' ')
+                    data_t.insert_host_conf(res)
 
         with Database_test() as data_t:
             tem = data_t.select_ipmi_ips()
@@ -37,22 +41,15 @@ def get_ipmi_ips(os_version):
         return [i.split('\n')[0] for i in ips]
 
 
-def create_bms_task(ipmi_info, os_version):
+def create_bms_task():
     host_ips = get_host_ips()
-
-    threads = []
-    for i in host_ips:
-        thread = threading.Thread(target=create_bms, args=(i, ipmi_info, os_version))
-        threads.append(thread)
 
     print("start", time.ctime())
 
-    for i in range(len(host_ips)):
-        threads[i].start()
-        time.sleep(0.01)
-
-    for i in range(len(host_ips)):
-        threads[i].join()
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        for i in host_ips:
+            time.sleep(0.01)
+            executor.submit(create_bms, i)
 
     print("end", time.ctime())
 
@@ -72,43 +69,30 @@ def checkout(host_ips):
     return dhcp_ips
 
 
-def get_hardinfo_task(os_version, ipmi_info):
+def get_hardinfo_task(os_version):
     host_ips = get_ipmi_ips(os_version)
-    threads = []
-    for i in host_ips:
-        thread = threading.Thread(target=boot_deploy_image, args=(i, ipmi_info))
-        threads.append(thread)
 
     print("start", time.ctime())
-
-    for i in range(len(host_ips)):
-        threads[i].start()
-        time.sleep(0.01)
-
-    for i in range(len(host_ips)):
-        threads[i].join()
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        for i in host_ips:
+            time.sleep(0.01)
+            executor.submit(boot_deploy_image, i)
 
     dhcp_ips = checkout(host_ips)
 
-    threads = []
-    for i in dhcp_ips:
-        thread = threading.Thread(target=get_hardinfo, args=(i[0],))
-        threads.append(thread)
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        for i in dhcp_ips:
+            time.sleep(0.01)
+            executor.submit(get_hardinfo, i[0])
 
-    for i in range(len(host_ips)):
-        threads[i].start()
-        time.sleep(0.01)
 
-    for i in range(len(host_ips)):
-        threads[i].join()
 
     print("end", time.ctime())
-
+    time.sleep(10)
 
 if __name__ == '__main__':
     # set ipmi username password
-    ipmi_info = (cp.get('ipmi', 'username'), cp.get('ipmi', 'password'))
-    os_version = cp.get('image', 'os_version')        # vm_esxi_64    ubuntu16_64
+    os_version = cp.get('image', 'os_version')
 
-    get_hardinfo_task(os_version, ipmi_info)
-    create_bms_task(ipmi_info, os_version)
+    get_hardinfo_task(os_version)
+    create_bms_task()

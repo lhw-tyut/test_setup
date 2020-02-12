@@ -1,10 +1,14 @@
 import sqlite3
 import uuid
+from configparser import ConfigParser
 
+cp = ConfigParser()
+cp.read("bms.ini")
 
 class Database_test():
     def __init__(self):
-        self.conn = sqlite3.connect("test.db")
+        self.nic_count = int(cp.get('nic', 'count'))
+        self.conn = sqlite3.connect("test.db", timeout=5)
         self.cursor = self.conn.cursor()
 
     def __enter__(self):
@@ -31,22 +35,29 @@ class Database_test():
 
     # server table
     def create_host(self):
-        sql = "create table host " \
-              "(create_id varchar(50) primary key, ipmi_ip varchar(30), mac1 varchar(30), mac2 varchar(30), " \
-              "mac3 varchar(20), mac4 varchar(20), mac5 varchar(20), mac6 varchar(20), result varchar(10))"
+        macs = ''
+        for i in range(self.nic_count):
+            mac = "mac%s varchar(20), " % (i + 1)
+            macs += mac
+        sql = "create table host (ipmi_ip varchar(30), " \
+              + macs + "result varchar(10))"
+
         self.cursor.execute(sql)
 
     def insert_host(self, attr):
-        temp = len(attr)
-        attr1 = attr
-        if temp != 9:
-            for i in range(9-temp):
-                attr1.append("0")
+        macs = ''
+        for i in range(self.nic_count + 1):
+            mac = "?, "
+            macs += mac
+        sql = "insert into host values (" + macs + "?)"
+        attr.append("0")
+        self.cursor.execute(sql, tuple(attr))
 
-        sql = "insert into host " \
-              "(create_id, ipmi_ip, mac1, mac2, mac3, mac4, mac5, mac6, result) " \
-              "values (?, ?, ?, ?, ?, ?, ?, ?, ?)"
-        self.cursor.execute(sql, tuple(attr1))
+    def select_host(self, attr):
+        sql = "select count(*) from host where ipmi_ip='%s'" % attr
+        self.cursor.execute(sql)
+        value = self.cursor.fetchone()
+        return value
 
     # dhcpIP table
     def create_dhcpinfo(self):
@@ -62,17 +73,21 @@ class Database_test():
 
     # server table
     def create_host_conf(self):
+        ips = ''
+        for i in range(self.nic_count):
+            ip = "ip%s varchar(20), " % (i + 1)
+            ips += ip
         sql = "create table host_conf " \
-              "(ipmi_ip varchar(20), ip1 varchar(20), netmask1 varchar(20), " \
-              "gateway1 varchar(20), bond_mode varchar(2),ip2 varchar(20), netmask2 varchar(20), " \
-              "gateway2 varchar(20), ip3 varchar(20), netmask3 varchar(20), gateway3 varchar(20))"
+              "(ipmi_ip varchar(20), " + ips + "hostname varchar(30))"
         self.cursor.execute(sql)
 
     def insert_host_conf(self, attr):
-        sql = "insert into host_conf " \
-              "(ipmi_ip, ip1, netmask1, gateway1, bond_mode, " \
-              "ip2, netmask2, gateway2, ip3, netmask3, gateway3) " \
-              "values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        ips = ''
+        for i in range(self.nic_count + 1):
+            ip = "?, "
+            ips += ip
+        sql = "insert into host_conf values (" + ips + "?)"
+        attr.append("bms")
         self.cursor.execute(sql, tuple(attr))
 
     # update create_bms table
@@ -115,7 +130,7 @@ class Database_test():
         return value[0]
 
     def select_mac(self, mac):
-        sql = "select ipmi_ip, mac1 from host where mac1='{}'".format(mac)
+        sql = "select ipmi_ip, mac2 from host where mac2='{}'".format(mac)
         self.cursor.execute(sql)
         value = self.cursor.fetchone()
         return value
@@ -127,9 +142,14 @@ class Database_test():
         return value
 
     def select_host_conf(self, ip):
-        sql = "select ip1, netmask1, gateway1, bond_mode, " \
-              "ip2, netmask2, gateway2, ip3, netmask3, gateway3 from host_conf " \
+        sql = "select * from host_conf " \
               "where ipmi_ip='{}'".format(ip)
+        self.cursor.execute(sql)
+        value = self.cursor.fetchone()
+        return value
+
+    def select_host_conf_count(self):
+        sql = "select count(*) from host_conf "
         self.cursor.execute(sql)
         value = self.cursor.fetchone()
         return value
