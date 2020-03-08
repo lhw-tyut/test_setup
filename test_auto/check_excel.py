@@ -49,7 +49,7 @@ for i in range(1, rows_num):
     with Database_test() as data_t:
         dhcp_mac = data_t.select_info('create_bms', 'dhcp_mac', ipmi_ip=ipmi_ip)
         dhcp_mac = dhcp_mac[0]
-        print(dhcp_mac)
+
     new_macs1 = copy.deepcopy(new_macs)
     if new_macs1[0] != dhcp_mac:
         print('%s Port order error' % ipmi_ip)

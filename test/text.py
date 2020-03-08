@@ -1,10 +1,25 @@
-a = '10.100.100.'
-count = 6
-with open('host_ip', 'r') as fp:
-    ips = fp.readlines()
+import tenacity
+from concurrent.futures import ThreadPoolExecutor
 
-for i in range(count):
-    ip1 = ips[i][:-1]
-    ip2 = a + str(181 + i)
-    ip3 = '10.10.10.' + str(1 + i)
-    print('%s %s %s' %(ip1, ip2, ip3))
+
+def checkout_gethardinfo(timeout=10):
+    @tenacity.retry(wait=tenacity.wait_fixed(2), stop=tenacity.stop_after_delay(timeout))
+    def _checkout():
+        res = None
+        if res:
+            return res
+        else:
+            print('a')
+            raise Exception("%s get dhcp ip failed")
+
+    res = _checkout()
+
+
+def test_a(i):
+    print(i)
+    checkout_gethardinfo()
+
+
+with ThreadPoolExecutor(max_workers=50) as executor:
+    for i in range(5):
+        executor.submit(test_a, i)

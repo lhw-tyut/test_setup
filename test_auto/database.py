@@ -63,7 +63,7 @@ class Database_test():
         for i in range(self.nic_count + 1):
             ip = "?, "
             ips += ip
-        sql = "insert into {} values (" + ips + "?)".format(table)
+        sql = "insert into {} values (".format(table) + ips + "?)"
         if table == 'host_conf':
             attr.append("bms")
         else:

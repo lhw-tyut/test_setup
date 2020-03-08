@@ -40,7 +40,7 @@ def callback():
 
     if len(taskuuid) > 5:
         with Database_test() as data_t:
-            data_t.update_create_bms(step, state, taskuuid)
+            data_t.update_info(state, attr=step, pk=taskuuid)
 
     return json.dumps({"success": True, "error": ""})
 

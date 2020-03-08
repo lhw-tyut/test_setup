@@ -26,7 +26,7 @@ PASSWORD = cp.get('ipmi', 'password')
 MODE = cp.get('ipmi', 'mode')
 OS_VERSION = cp.get('image', 'os_version')
 NETMASK = cp.get('image', 'netmask')
-TIMEOUT = cp.get('image', 'deploy_image_timeout')
+TIMEOUT = int(cp.get('image', 'deploy_image_timeout'))
 
 
 def read_file(f_name):
@@ -47,10 +47,8 @@ def checkout(task, cid, ip, timeout=TIMEOUT):
     res = _checkout()
     if res != "failed":
         logger.debug("%s execute task %s success" % (ip, task))
-        print("%s execute task %s success" % (ip, task))
     else:
         logger.debug("%s execute task %s failed" % (ip, task))
-        print("%s execute task %s failed" % (ip, task))
         raise
 
     return res
@@ -228,7 +226,7 @@ def create_bms(host):
 
     ip = host[0]
 
-    mode = "MODE"
+    mode = MODE
     os_version = OS_VERSION
 
     with Database_test() as data_t:

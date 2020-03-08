@@ -73,6 +73,8 @@ def get_hardinfo_task(os_version):
 if __name__ == '__main__':
     # set ipmi username password
     os_version = cp.get('image', 'os_version')
-
+    start = time.time()
     get_hardinfo_task(os_version)
     create_bms_task()
+    end = time.time()
+    print("total time: %s" % (end - start))
