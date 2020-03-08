@@ -41,5 +41,4 @@ with open('host_ip', 'a') as fp:
             fp.write(i[j])
             if j != count:
                 fp.write(' ')
-        if acount != len(host_ip):
-            fp.write('\n')
+        fp.write('\n')

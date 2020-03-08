@@ -10,6 +10,7 @@ from configparser import ConfigParser
 cp = ConfigParser()
 cp.read("bms.ini")
 
+
 def get_host_ips():
     with Database_test() as data_t:
         res = data_t.select()
@@ -18,8 +19,8 @@ def get_host_ips():
                 data_t.delete_info(ip=i[0])
         return res
 
-def get_ipmi_ips(os_version):
 
+def get_ipmi_ips(os_version):
     with open('ipmi_ips', 'r') as fp:
         ips = fp.readlines()
 
@@ -42,6 +43,7 @@ def get_ipmi_ips(os_version):
     else:
         return [i.split('\n')[0] for i in ips]
 
+
 def create_bms_task():
     host_ips = get_host_ips()
 
@@ -54,6 +56,7 @@ def create_bms_task():
 
     print("end", time.ctime())
 
+
 def get_hardinfo_task(os_version):
     host_ips = get_ipmi_ips(os_version)
 
@@ -65,6 +68,7 @@ def get_hardinfo_task(os_version):
 
     print("end", time.ctime())
     time.sleep(5)
+
 
 if __name__ == '__main__':
     # set ipmi username password

@@ -39,6 +39,7 @@ for i in range(1, rows_num):
     new_switchs = []
     mac_res = [m1 for m1 in init_macs if m1 in new_macs]
     if len(mac_res) != len(new_macs):
+        print('%s mac address error' % ipmi_ip)
         for mac_id in range(len(new_macs)):
             sheets_copy.cell(i + 1, 10 + mac_id + 1).value = new_macs[mac_id]
         with open('excel_log', 'a') as fp:
@@ -57,7 +58,6 @@ for i in range(1, rows_num):
         for id in range(len(new_macs1)):
             ind = init_macs.index(new_macs1[id])
             new_switchs.append(init_switchs[id])
-            print('%s %s %s' % (i + 1, switch_index + ind + 1, init_switchs[id]))
             sheets_copy.cell(i+1, switch_index + ind + 1).value = init_switchs[id]
     else:
         continue

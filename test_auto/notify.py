@@ -17,7 +17,6 @@ def notify():
     mac = str(json_data[0]["mac"])
     ipaddress = str(json_data[0]["ipaddress"])
     ipmi_ip = str(json_data[0]["ipmi_ip"])
-    print("mac:%s  ip:%s" % (mac, ipaddress))
 
     with Database_test() as data_t:
         taskuuid = data_t.select_info('create_bms', 'create_id', ipmi_ip=ipmi_ip)

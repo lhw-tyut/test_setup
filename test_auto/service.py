@@ -23,6 +23,7 @@ REST_SERVER = cp.get("rest", "rest_service")
 REST_SERVER_PORT = cp.get("rest", "rest_service_port")
 USERNAME = cp.get('ipmi', 'username')
 PASSWORD = cp.get('ipmi', 'password')
+MODE = cp.get('ipmi', 'mode')
 OS_VERSION = cp.get('image', 'os_version')
 NETMASK = cp.get('image', 'netmask')
 TIMEOUT = cp.get('image', 'deploy_image_timeout')
@@ -227,7 +228,7 @@ def create_bms(host):
 
     ip = host[0]
 
-    mode = "uefi"
+    mode = "MODE"
     os_version = OS_VERSION
 
     with Database_test() as data_t:
@@ -251,7 +252,6 @@ def create_bms(host):
         rest_pxe = RestRequest(ipaddress, "80", create_uuid)
 
         # start clone image, get callback
-        print("%s starting clone image" % ip)
         logger.debug("%s starting clone image" % ip)
         clone_image(rest_pxe, os_version)
         create_res.append(checkout("clone_s", create_uuid, ip, timeout=1500))
@@ -296,6 +296,7 @@ def create_bms(host):
     # reset service
     ipmi_reset(rest, ip, username, password)
     checkout("powerreset_s", create_uuid, ip)
+    print("%s install image successful" % ip)
 
 
 def get_hardinfo(*attr):
@@ -311,7 +312,7 @@ def boot_deploy_image(*attr):
     username = USERNAME
     password = PASSWORD
     ip = attr[0]
-    mode = "uefi"
+    mode = MODE
 
     ipmi_stop(rest, ip, username, password)
     logger.debug("%s execute task %s success" % (ip, "power off"))
@@ -324,3 +325,4 @@ def boot_deploy_image(*attr):
     # get dhcpIP from client service
     res = checkout_gethardinfo("dhcp_ip", ip)
     get_hardinfo(res)
+    print("%s get hardinfo successful" % ip)
