@@ -1,25 +1,45 @@
-import tenacity
-from concurrent.futures import ThreadPoolExecutor
+import multiprocessing
+import timeit
+import operator
+import threading
 
+# a = []
+# if a:
+#     print(a)
 
-def checkout_gethardinfo(timeout=10):
-    @tenacity.retry(wait=tenacity.wait_fixed(2), stop=tenacity.stop_after_delay(timeout))
-    def _checkout():
-        res = None
-        if res:
-            return res
-        else:
-            print('a')
-            raise Exception("%s get dhcp ip failed")
+# def test(attrs = None):
+#     if attrs:
+#         for i in attrs:
+#             print(i)
+#     else:
+#         print('is NULL')
+#
+# test([])
+#
+# with open("aa.txt", 'r') as fp:
+#     res = fp.readlines()
+#     for i in res:
+#         print(i.split("\n")[0])
 
-    res = _checkout()
+# def test(*att, **attr):
+#     # for i in attr:
+#     #     print(i)
+#     print(attr)
+#     print(att)
+#     print(attr['os'])
+#     print(attr['t'])
+# a = "centos"
+# b = [1,2,4]
+# ip = ("aa", "bb", "cc")
+#
+# threads = []
+# for i in range(2):
+#     t = threading.Thread(target=test, args=(ip, a, b), kwargs={'ip':ip, 'os': a, 't':b})
+#     threads.append(t)
+#
+# for th in threads:
+#     th.start()
 
-
-def test_a(i):
-    print(i)
-    checkout_gethardinfo()
-
-
-with ThreadPoolExecutor(max_workers=50) as executor:
-    for i in range(5):
-        executor.submit(test_a, i)
+a = 'aaa'
+b = a.split('\n')
+print(b)
