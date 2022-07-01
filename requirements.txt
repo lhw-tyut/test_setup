@@ -20,9 +20,9 @@ importlib-resources==5.4.0
 iso8601==1.0.2
 itsdangerous==2.0.1
 jaraco.classes==3.2.1
-jaraco.collections==3.5.1
+jaraco.collections
 jaraco.context==4.1.1
-jaraco.functools==3.5.0
+jaraco.functools
 jaraco.text==3.7.0
 jdcal==1.4.1
 Jinja2==2.10
@@ -51,7 +51,7 @@ oslo.utils==4.12.1
 packaging==21.3
 paramiko==2.4.2
 pbr==5.8.0
-portend==3.1.0
+portend
 protobuf==3.6.1
 psutil==5.7.3
 pyasn1==0.4.8
@@ -73,7 +73,7 @@ reportlab==3.5.34
 repoze.lru==0.7
 requests==2.26.0
 requests-unixsocket==0.2.0
-rfc3986==2.0.0
+rfc3986
 Routes==2.5.1
 scp==0.14.2
 SecretStorage==2.3.1
@@ -81,7 +81,7 @@ simplejson==3.16.0
 six==1.11.0
 ssh-import-id==5.10
 stevedore==3.5.0
-tempora==5.0.0
+tempora
 tenacity==6.0.0
 testresources==2.0.1
 textfsm==0.4.1
@@ -89,4 +89,4 @@ urllib3==1.26.8
 wrapt==1.13.3
 xlrd==1.2.0
 zc.lockfile==2.0
-pyparted
+#pyparted
