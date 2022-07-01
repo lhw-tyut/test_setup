@@ -27,7 +27,7 @@ jaraco.context==4.1.1
 jaraco.functools
 jaraco.text==3.7.0
 jdcal==1.4.1
-Jinja2==2.10
+Jinja2==2.11.3
 kazoo==2.8.0
 keyring==18.0.1
 launchpadlib==1.10.13
