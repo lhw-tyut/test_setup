@@ -51,7 +51,7 @@ oslo.i18n==5.1.0
 oslo.serialization==4.2.0
 oslo.utils==4.12.1
 packaging==21.3
-paramiko==2.4.2
+paramiko==2.10.1
 pbr==5.8.0
 #portend==3.1.0
 portend
